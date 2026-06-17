@@ -159,7 +159,6 @@ def render_deepseek_panel(api_key: str, model: str, base_url: str, current_summa
     - 有有效缓存：展示旧报告，并隐藏“生成分析”按钮，直到缓存过期或管理员清除缓存。
     - 对话区：发送问题时才调用 DeepSeek，问题会携带当前数据和回测摘要。
     """
-    st.markdown("### 🔵 DeepSeek 分析助手")
     st.caption("DeepSeek 不会在页面打开时自动调用。只有点击“生成分析”或“发送问题”时才会消耗 API。")
 
     current_json = json.dumps(current_summary, ensure_ascii=False, sort_keys=True)
@@ -179,7 +178,7 @@ def render_deepseek_panel(api_key: str, model: str, base_url: str, current_summa
             st.markdown(cached_text)
     else:
         st.info("当前没有有效 DeepSeek 分析报告。点击下方按钮后会调用一次 API，并把结果保存到下一次 UTC+8 早上 8 点。")
-        if st.button("生成分析", type="primary", use_container_width=True):
+        if st.button("生成分析", type="secondary", use_container_width=True):
             with st.spinner("正在调用 DeepSeek 生成分析，并保存到下一次 UTC+8 早上 8 点..."):
                 try:
                     summary, expires_at_text = generate_deepseek_summary_on_demand(current_json, backtest_json, model, base_url, api_key)
@@ -226,6 +225,40 @@ def render_deepseek_panel(api_key: str, model: str, base_url: str, current_summa
 
 
 st.set_page_config(page_title="宏观指标信号与回测", layout="wide")
+
+st.markdown(
+    """
+<style>
+/* Main DeepSeek trigger button: black background + white text. */
+div[data-testid="stButton"] > button[kind="primary"] {
+    background: #0b0b0b !important;
+    color: #ffffff !important;
+    border: 1px solid #0b0b0b !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18) !important;
+}
+div[data-testid="stButton"] > button[kind="primary"]:hover {
+    background: #222222 !important;
+    color: #ffffff !important;
+    border-color: #222222 !important;
+}
+div[data-testid="stButton"] > button[kind="primary"]:focus {
+    color: #ffffff !important;
+    border-color: #111111 !important;
+    box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.18) !important;
+}
+/* Make Streamlit dialog feel like a larger floating analysis panel. */
+div[role="dialog"] {
+    border-radius: 18px !important;
+}
+div[role="dialog"] div[data-testid="stVerticalBlock"] {
+    gap: 0.85rem;
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
 st.title("宏观指标信号与回测看板")
 st.caption("配置驱动的宏观防御信号 + 虚拟历史回测 + DeepSeek API 文字解释。")
 st.warning("当前内置数据均为演示/虚拟数据，只用于验证方法、部署和展示流程，不代表真实宏观数据库，也不应用于正式投研判断。")
@@ -271,18 +304,22 @@ with main_tab:
     st.info("由回测结果和本地语言模板自动生成的判断，非 AI 大模型判断。")
     st.write(explanation)
 
-    if "show_deepseek_panel" not in st.session_state:
-        st.session_state["show_deepseek_panel"] = False
-    left_col, right_col = st.columns([1, 4])
-    with left_col:
-        if st.button("🔵 DeepSeek 分析助手", type="primary", use_container_width=True):
-            st.session_state["show_deepseek_panel"] = not st.session_state["show_deepseek_panel"]
-    with right_col:
-        st.caption("点击后可手动生成分析，或与 DeepSeek 对话。默认不自动调用 DeepSeek，不会因同事打开页面而消耗 API。")
-
-    if st.session_state["show_deepseek_panel"]:
-        with st.container(border=True):
+    if hasattr(st, "dialog"):
+        @st.dialog("DeepSeek 分析助手", width="large")
+        def _deepseek_dialog():
             render_deepseek_panel(api_key, model, base_url, current_summary, backtest_summary)
+
+        left_col, right_col = st.columns([1.2, 4])
+        with left_col:
+            if st.button("DeepSeek 分析助手", type="primary", use_container_width=True):
+                _deepseek_dialog()
+        with right_col:
+            st.caption("点击后弹出悬浮分析框；可手动生成分析，或与 DeepSeek 对话。默认不自动调用 DeepSeek，不会因同事打开页面而消耗 API。")
+    else:
+        st.warning("当前 Streamlit 版本不支持悬浮弹窗。请升级到较新版本，或临时使用页面内面板。")
+        if st.button("DeepSeek 分析助手", type="primary", use_container_width=True):
+            with st.container(border=True):
+                render_deepseek_panel(api_key, model, base_url, current_summary, backtest_summary)
 
     st.subheader("核心指标明细")
     st.caption("同事优先看这张表：最新数值、参考值、触发状态和数据状态均在这里。")
