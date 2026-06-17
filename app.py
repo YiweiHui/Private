@@ -159,8 +159,6 @@ def render_deepseek_panel(api_key: str, model: str, base_url: str, current_summa
     - 有有效缓存：展示旧报告，并隐藏“生成分析”按钮，直到缓存过期或管理员清除缓存。
     - 对话区：发送问题时才调用 DeepSeek，问题会携带当前数据和回测摘要。
     """
-    st.caption("DeepSeek 不会在页面打开时自动调用。只有点击“生成分析”或“发送问题”时才会消耗 API。")
-
     current_json = json.dumps(current_summary, ensure_ascii=False, sort_keys=True)
     backtest_json = json.dumps(backtest_summary, ensure_ascii=False, sort_keys=True)
     cache_key = make_deepseek_cache_key(current_json, backtest_json, model, base_url)
@@ -173,16 +171,16 @@ def render_deepseek_panel(api_key: str, model: str, base_url: str, current_summa
         return
 
     if cached_text:
-        st.success(f"已存在 DeepSeek 分析报告，固定留存到：{expires_at}。在失效前隐藏“生成分析”按钮，避免重复调用。")
+        st.success(f"已生成今日 DeepSeek 分析报告，有效期至：{expires_at}。")
         with st.container(border=True):
             st.markdown(cached_text)
     else:
-        st.info("当前没有有效 DeepSeek 分析报告。点击下方按钮后会调用一次 API，并把结果保存到下一次 UTC+8 早上 8 点。")
+        st.info("当前暂无有效 DeepSeek 分析报告。")
         if st.button("生成分析", type="secondary", use_container_width=True):
-            with st.spinner("正在调用 DeepSeek 生成分析，并保存到下一次 UTC+8 早上 8 点..."):
+            with st.spinner("正在生成 DeepSeek 分析..."):
                 try:
                     summary, expires_at_text = generate_deepseek_summary_on_demand(current_json, backtest_json, model, base_url, api_key)
-                    st.success(f"生成成功，已保存到：{expires_at_text}。页面将刷新并隐藏“生成分析”按钮。")
+                    st.success(f"生成成功，有效期至：{expires_at_text}。")
                     st.markdown(summary)
                     st.rerun()
                 except Exception as exc:
@@ -190,8 +188,6 @@ def render_deepseek_panel(api_key: str, model: str, base_url: str, current_summa
 
     st.divider()
     st.markdown("### 与 DeepSeek 对话【数据和回测结果已上传】")
-    st.caption("这里的“已上传”指当前数据摘要和回测结果已作为对话上下文预置；只有发送问题时才会真正调用 DeepSeek。")
-
     question = st.text_area(
         "输入你想追问的问题",
         placeholder="例如：为什么当前判断是中性偏防御？哪些指标贡献最大？如何写成月报口径？",
@@ -213,7 +209,6 @@ def render_deepseek_panel(api_key: str, model: str, base_url: str, current_summa
         st.json({"current_summary": current_summary, "backtest_summary": backtest_summary})
 
     with st.expander("管理员操作：清除 DeepSeek 分析缓存", expanded=False):
-        st.caption("清除后会重新显示“生成分析”按钮。普通同事不需要操作。")
         if st.button("清除 DeepSeek 分析缓存", use_container_width=True):
             try:
                 if DEEPSEEK_CACHE_FILE.exists():
@@ -229,7 +224,6 @@ st.set_page_config(page_title="宏观指标信号与回测", layout="wide")
 st.markdown(
     """
 <style>
-/* Main DeepSeek trigger button: black background + white text. */
 div[data-testid="stButton"] > button[kind="primary"] {
     background: #0b0b0b !important;
     color: #ffffff !important;
@@ -248,7 +242,6 @@ div[data-testid="stButton"] > button[kind="primary"]:focus {
     border-color: #111111 !important;
     box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.18) !important;
 }
-/* Make Streamlit dialog feel like a larger floating analysis panel. */
 div[role="dialog"] {
     border-radius: 18px !important;
 }
@@ -260,7 +253,7 @@ div[role="dialog"] div[data-testid="stVerticalBlock"] {
     unsafe_allow_html=True,
 )
 st.title("宏观指标信号与回测看板")
-st.caption("配置驱动的宏观防御信号 + 虚拟历史回测 + DeepSeek API 文字解释。")
+st.caption("宏观防御信号、历史回测与辅助分析看板。")
 st.warning("当前内置数据均为演示/虚拟数据，只用于验证方法、部署和展示流程，不代表真实宏观数据库，也不应用于正式投研判断。")
 
 with st.sidebar:
@@ -269,12 +262,11 @@ with st.sidebar:
     st.caption("宏观历史数据格式：date, indicator_id, value。资产收益率格式：date, asset_id, asset_name, return。")
     st.divider()
     st.header("DeepSeek API")
-    st.caption("团队版建议在 Streamlit Secrets 中配置 API Key；普通同事无需输入 Key。DeepSeek 仅在手动生成分析或发送问题时调用。")
     secret_key = safe_secret("DEEPSEEK_API_KEY", "")
     if secret_key:
-        st.success("服务器端 API Key 已配置：可手动生成 DeepSeek 分析，并固定留存到下一次 UTC+8 早上 8 点。")
+        st.success("服务器端 API Key 已配置。")
     else:
-        st.warning("未配置服务器端 API Key：DeepSeek 手动分析不可用，但本地规则判断和回测模型仍可使用。")
+        st.warning("未配置服务器端 API Key：DeepSeek 分析不可用，本地规则判断和回测模型仍可使用。")
     with st.expander("开发者临时测试 API Key", expanded=False):
         temp_key = st.text_input("临时 API Key（仅当前会话）", value="", type="password")
     api_key = temp_key or secret_key
@@ -301,7 +293,7 @@ with main_tab:
     render_kpis(result.overall_score, result.trigger_count, result.valid_signal_count, score_label(result.overall_score))
 
     st.subheader("自动生成判断")
-    st.info("由回测结果和本地语言模板自动生成的判断，非 AI 大模型判断。")
+    st.caption("由回测结果和本地语言模板自动生成，非 AI 大模型判断。")
     st.write(explanation)
 
     if hasattr(st, "dialog"):
@@ -309,12 +301,10 @@ with main_tab:
         def _deepseek_dialog():
             render_deepseek_panel(api_key, model, base_url, current_summary, backtest_summary)
 
-        left_col, right_col = st.columns([1.2, 4])
-        with left_col:
+        deepseek_btn_col, _ = st.columns([1.2, 4])
+        with deepseek_btn_col:
             if st.button("DeepSeek 分析助手", type="primary", use_container_width=True):
                 _deepseek_dialog()
-        with right_col:
-            st.caption("点击后弹出悬浮分析框；可手动生成分析，或与 DeepSeek 对话。默认不自动调用 DeepSeek，不会因同事打开页面而消耗 API。")
     else:
         st.warning("当前 Streamlit 版本不支持悬浮弹窗。请升级到较新版本，或临时使用页面内面板。")
         if st.button("DeepSeek 分析助手", type="primary", use_container_width=True):
@@ -322,7 +312,6 @@ with main_tab:
                 render_deepseek_panel(api_key, model, base_url, current_summary, backtest_summary)
 
     st.subheader("核心指标明细")
-    st.caption("同事优先看这张表：最新数值、参考值、触发状态和数据状态均在这里。")
     render_signal_table(result.detail)
 
     st.subheader("维度防御分数")
