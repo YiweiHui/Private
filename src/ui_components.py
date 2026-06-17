@@ -1,4 +1,17 @@
-"""Streamlit 展示组件。"""
+archy(detail: pd.DataFrame, dimension_score: pd.DataFrame | None = None, dimension: str | None = None) -> None:
+    data = detail if dimension is None else detail[detail["dimension"] == dimension]
+    if data.empty:
+        st.info("暂无指标。")
+        return
+    score_map = {}
+    if dimension_score is not None and not dimension_score.empty:
+        score_map = {str(row.dimension): row for row in dimension_score.itertuples(index=False)}
+    for dim, sub in data.groupby("dimension", sort=False):
+        sub = sub.sort_values("display_order") if "display_order" in sub.columns else sub
+        weight = float(sub["dimension_weight"].iloc[0])
+        score_row = score_map.get(str(dim))
+        if score_row is not None:
+            valid_coun"""Streamlit 展示组件。"""
 
 from __future__ import annotations
 
@@ -27,20 +40,7 @@ def render_dimension_score(dimension_score: pd.DataFrame) -> None:
         use_container_width=True, hide_index=True)
 
 
-def render_signal_hierarchy(detail: pd.DataFrame, dimension_score: pd.DataFrame | None = None, dimension: str | None = None) -> None:
-    data = detail if dimension is None else detail[detail["dimension"] == dimension]
-    if data.empty:
-        st.info("暂无指标。")
-        return
-    score_map = {}
-    if dimension_score is not None and not dimension_score.empty:
-        score_map = {str(row.dimension): row for row in dimension_score.itertuples(index=False)}
-    for dim, sub in data.groupby("dimension", sort=False):
-        sub = sub.sort_values("display_order") if "display_order" in sub.columns else sub
-        weight = float(sub["dimension_weight"].iloc[0])
-        score_row = score_map.get(str(dim))
-        if score_row is not None:
-            valid_count = int(score_row.valid_count); trigger_count = int(score_row.trigger_count)
+def render_signal_hiert = int(score_row.valid_count); trigger_count = int(score_row.trigger_count)
             dimension_score_value = float(score_row.dimension_score); weighted_score = float(score_row.weighted_score)
         else:
             valid = sub["signal_flag"].dropna(); valid_count = int(len(valid)); trigger_count = int(valid.sum()) if valid_count else 0
@@ -197,3 +197,4 @@ def render_backtest_summary(forward_stats: pd.DataFrame, strategy_curve: pd.Data
         st.dataframe(strategy_metrics.style.format({"累计收益": "{:.2%}", "年化收益": "{:.2%}", "年化波动": "{:.2%}", "最大回撤": "{:.2%}",
                                                    "夏普比率": "{:.2f}", "卡玛比率": "{:.2f}", "月度胜率": "{:.1%}"}),
                      use_container_width=True, hide_index=True)
+
