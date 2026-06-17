@@ -1,9 +1,6 @@
 """宏观择时/防御信号计算引擎。
 
-本模块不包含 Wind、Choice、AKShare 等数据获取逻辑，只负责：
-1. 读取已经落地的指标历史值；
-2. 根据配置表计算最新值、参考值和防御信号；
-3. 汇总维度得分和总防御分数。
+只负责配置驱动的信号计算，不包含 Wind/Choice/AKShare 等数据获取逻辑。
 """
 
 from __future__ import annotations
@@ -49,7 +46,6 @@ class MacroSignalEngine:
     - fixed + below/above：最新值低于/高于固定阈值 threshold。
 
     默认移动平均参考值使用「最新一期之前的 N 期均值」，避免把本期数值本身放入比较基准。
-    如需改为包含最新一期，可在配置表加入 ma_include_latest=True。
     """
 
     def __init__(self, config_df: pd.DataFrame, series_df: pd.DataFrame):
@@ -93,39 +89,30 @@ class MacroSignalEngine:
         series["indicator_id"] = series["indicator_id"].astype(str)
         return series.sort_values(["indicator_id", "date"]).reset_index(drop=True)
 
-    def run(self) -> EngineResult:
+    def run(self, as_of_date: str | pd.Timestamp | None = None) -> EngineResult:
+        series = self.series_df
+        if as_of_date is not None:
+            as_of = pd.to_datetime(as_of_date)
+            series = series[series["date"] <= as_of].copy()
         rows = []
         for _, cfg in self.config_df.iterrows():
-            rows.append(self._compute_one_indicator(cfg))
+            rows.append(self._compute_one_indicator(cfg, series))
         detail = pd.DataFrame(rows)
         detail = self._add_display_columns(detail)
         dimension_score = self._compute_dimension_score(detail)
         overall_score = float(dimension_score["weighted_score"].sum()) if not dimension_score.empty else 0.0
-        valid_signal_count = int(detail["signal_flag"].notna().sum()) if not detail.empty else 0
-        trigger_count = int(detail["signal_flag"].fillna(0).sum()) if not detail.empty else 0
-        return EngineResult(
-            detail=detail,
-            dimension_score=dimension_score,
-            overall_score=overall_score,
-            valid_signal_count=valid_signal_count,
-            trigger_count=trigger_count,
-        )
+        signal_numeric = pd.to_numeric(detail["signal_flag"], errors="coerce") if not detail.empty else pd.Series(dtype=float)
+        valid_signal_count = int(signal_numeric.notna().sum()) if not detail.empty else 0
+        trigger_count = int(signal_numeric.fillna(0).sum()) if not detail.empty else 0
+        return EngineResult(detail, dimension_score, overall_score, valid_signal_count, trigger_count)
 
-    def _compute_one_indicator(self, cfg: pd.Series) -> dict:
+    def _compute_one_indicator(self, cfg: pd.Series, series_df: pd.DataFrame) -> dict:
         indicator_id = str(cfg["indicator_id"])
-        hist = self.series_df[self.series_df["indicator_id"] == indicator_id].sort_values("date")
+        hist = series_df[series_df["indicator_id"] == indicator_id].sort_values("date")
 
         base = cfg.to_dict()
-        base.update(
-            {
-                "latest_date": pd.NaT,
-                "latest_value": pd.NA,
-                "previous_value": pd.NA,
-                "reference_value": pd.NA,
-                "signal_flag": pd.NA,
-                "data_status": "缺少数据",
-            }
-        )
+        base.update({"latest_date": pd.NaT, "latest_value": pd.NA, "previous_value": pd.NA, "reference_value": pd.NA,
+                     "signal_flag": pd.NA, "data_status": "缺少数据"})
         if hist.empty:
             return base
 
@@ -137,7 +124,6 @@ class MacroSignalEngine:
 
         rule_type = str(cfg["rule_type"]).strip().lower()
         direction = str(cfg["direction"]).strip().lower()
-
         try:
             if rule_type == "moving_avg":
                 ref = self._moving_average(hist, cfg)
@@ -156,7 +142,7 @@ class MacroSignalEngine:
                 base["data_status"] = "正常" if pd.notna(ref) else "缺少阈值"
             else:
                 base["data_status"] = f"未知规则: {rule_type}"
-        except Exception as exc:  # noqa: BLE001 - 展示给用户的业务错误
+        except Exception as exc:
             base["data_status"] = f"计算失败: {exc}"
         return base
 
@@ -174,15 +160,9 @@ class MacroSignalEngine:
         if detail.empty:
             return detail
         detail = detail.copy()
-        detail["dimension_label"] = detail.apply(
-            lambda r: f"{r['dimension']}\n({r['dimension_weight']:.0%})", axis=1
-        )
-        detail["latest_value_display"] = detail.apply(
-            lambda r: _format_value(r.get("latest_value"), r.get("unit"), int(r.get("digits", 2))), axis=1
-        )
-        detail["reference_value_display"] = detail.apply(
-            lambda r: _format_value(r.get("reference_value"), r.get("unit"), int(r.get("digits", 2))), axis=1
-        )
+        detail["dimension_label"] = detail.apply(lambda r: f"{r['dimension']}\n({r['dimension_weight']:.0%})", axis=1)
+        detail["latest_value_display"] = detail.apply(lambda r: _format_value(r.get("latest_value"), r.get("unit"), int(r.get("digits", 2))), axis=1)
+        detail["reference_value_display"] = detail.apply(lambda r: _format_value(r.get("reference_value"), r.get("unit"), int(r.get("digits", 2))), axis=1)
         detail["signal_flag_display"] = detail["signal_flag"].map({1: "1", 0: "0"}).fillna("—")
         detail["signal_state"] = detail["signal_flag"].map({1: "触发防御", 0: "未触发"}).fillna("数据不足")
         return detail
@@ -190,9 +170,7 @@ class MacroSignalEngine:
     @staticmethod
     def _compute_dimension_score(detail: pd.DataFrame) -> pd.DataFrame:
         if detail.empty:
-            return pd.DataFrame(
-                columns=["dimension", "dimension_weight", "indicator_count", "valid_count", "trigger_count", "dimension_score", "weighted_score"]
-            )
+            return pd.DataFrame(columns=["dimension", "dimension_weight", "indicator_count", "valid_count", "trigger_count", "dimension_score", "weighted_score"])
         grouped = []
         for dim, sub in detail.groupby("dimension", sort=False):
             weight = float(sub["dimension_weight"].iloc[0])
@@ -200,17 +178,9 @@ class MacroSignalEngine:
             valid_count = int(len(valid))
             trigger_count = int(valid.sum()) if valid_count else 0
             dimension_score = trigger_count / valid_count if valid_count else 0.0
-            grouped.append(
-                {
-                    "dimension": dim,
-                    "dimension_weight": weight,
-                    "indicator_count": int(len(sub)),
-                    "valid_count": valid_count,
-                    "trigger_count": trigger_count,
-                    "dimension_score": dimension_score,
-                    "weighted_score": dimension_score * weight,
-                }
-            )
+            grouped.append({"dimension": dim, "dimension_weight": weight, "indicator_count": int(len(sub)),
+                            "valid_count": valid_count, "trigger_count": trigger_count,
+                            "dimension_score": dimension_score, "weighted_score": dimension_score * weight})
         return pd.DataFrame(grouped)
 
 
