@@ -38,12 +38,15 @@ def safe_secret(key: str, default: str = "") -> str:
 
 def build_summaries(result, backtest, current_bucket: str) -> tuple[dict, dict]:
     """生成给 DeepSeek 的结构化摘要，避免把全量历史表传给 API。"""
+    latest_dates = result.detail["latest_date"].dropna()
+    latest_data_date = max(latest_dates).strftime("%Y-%m-%d") if len(latest_dates) else "当前最新数据日"
     current_summary = {
         "overall_score": f"{result.overall_score:.1%}",
         "score_bucket": current_bucket,
         "score_label": score_label(result.overall_score),
         "trigger_count": result.trigger_count,
         "valid_signal_count": result.valid_signal_count,
+        "latest_data_date": latest_data_date,
         "dimension_scores": result.dimension_score.to_dict(orient="records"),
     }
     bt_focus = backtest.forward_stats[
@@ -171,17 +174,21 @@ def render_deepseek_panel(api_key: str, model: str, base_url: str, current_summa
         return
 
     if cached_text:
-        st.success(f"已生成今日 DeepSeek 分析报告，有效期至：{expires_at}。")
+        latest_data_date = current_summary.get("latest_data_date", "当前最新数据日")
+        st.success("已生成 DeepSeek 分析报告。")
         with st.container(border=True):
             st.markdown(cached_text)
+            st.caption(f"本报告基于 {latest_data_date} 数据生成，对该数据日负责；报告留存至 {expires_at}。")
     else:
         st.info("当前暂无有效 DeepSeek 分析报告。")
-        if st.button("生成分析", type="secondary", use_container_width=True):
+        if st.button("生成分析", type="primary", use_container_width=True):
             with st.spinner("正在生成 DeepSeek 分析..."):
                 try:
                     summary, expires_at_text = generate_deepseek_summary_on_demand(current_json, backtest_json, model, base_url, api_key)
-                    st.success(f"生成成功，有效期至：{expires_at_text}。")
+                    latest_data_date = current_summary.get("latest_data_date", "当前最新数据日")
+                    st.success("生成成功。")
                     st.markdown(summary)
+                    st.caption(f"本报告基于 {latest_data_date} 数据生成，对该数据日负责；报告留存至 {expires_at_text}。")
                     st.rerun()
                 except Exception as exc:
                     st.error(f"DeepSeek 分析生成失败：{exc}")
@@ -193,7 +200,7 @@ def render_deepseek_panel(api_key: str, model: str, base_url: str, current_summa
         placeholder="例如：为什么当前判断是中性偏防御？哪些指标贡献最大？如何写成月报口径？",
         height=90,
     )
-    if st.button("发送问题", type="secondary", use_container_width=True):
+    if st.button("发送问题", type="primary", use_container_width=True):
         if not question.strip():
             st.warning("请先输入问题。")
         else:
