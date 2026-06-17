@@ -1,0 +1,37 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local environment / secrets
+.env
+.env.*
+.streamlit/secrets.toml
+
+# Runtime outputs
+output/
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Keep demo templates in git, but avoid accidentally uploading real/private data
+# Put confidential data under data/private/ or name it real_*.csv/xlsx.
+data/private/
+data/real_*.csv
+data/real_*.xlsx
+data/*真实*.csv
+data/*真实*.xlsx
+data/*客户*.csv
+data/*客户*.xlsx
+data/*持仓*.csv
+data/*持仓*.xlsx

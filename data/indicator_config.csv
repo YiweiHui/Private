@@ -1,0 +1,13 @@
+﻿display_order,dimension,dimension_weight,indicator_id,indicator_name,unit,rule_type,direction,ma_window,threshold,ma_include_latest,signal_text,digits,enabled,remark
+1,经济景气,0.25,PMI_MFG,制造业PMI,,moving_avg,below,6,,False,低于移动平均,2,True,真实接入时可映射至 Wind/统计局PMI代码
+2,经济景气,0.25,FAI_MFG_YOY,固定资产投资完成额:制造业:累计同比,%,moving_avg,below,6,,False,低于移动平均,2,True,
+3,经济景气,0.25,HOUSE_SALES_AREA_YOY,商品房销售面积:当月同比,%,mom,down,,,False,环比下降,2,True,
+4,通胀水平,0.25,CPI_YOY,CPI:当月同比,%,moving_avg,below,6,,False,低于移动平均,2,True,
+5,通胀水平,0.25,PPI_YOY,PPI:当月同比,%,mom,down,,,False,环比下降,2,True,
+6,通胀水平,0.25,PPI_CPI_SPREAD,PPI和CPI剪刀差,pp,moving_avg,above,6,,False,高于移动平均,2,True,可以由PPI_YOY-CPI_YOY派生，也可直接提供
+7,货币信用,0.25,M1_YOY,M1:当月同比,%,moving_avg,below,6,,False,低于移动平均,2,True,
+8,货币信用,0.25,M2_M1_SPREAD,M2和M1剪刀差,pp,moving_avg,above,6,,False,高于移动平均,2,True,可以由M2_YOY-M1_YOY派生，也可直接提供
+9,货币信用,0.25,TSF_YOY,社融:当月同比,%,mom,down,,,False,环比下降,2,True,
+10,利率,0.25,CN_10Y_YIELD,中债到期收益率:10年,%,mom,down,,,False,环比下降,2,True,
+11,利率,0.25,US_1Y_YIELD,美债到期收益率:1年,%,mom,up,,,False,环比上升,2,True,
+12,利率,0.25,CN_US_SPREAD,中美利差,pp,moving_avg,above,6,,False,高于移动平均,2,True,可以由中国收益率-美国收益率派生，也可直接提供
