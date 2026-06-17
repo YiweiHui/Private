@@ -69,15 +69,101 @@ def _color_signal(val: str) -> str:
     return "background-color: #F3F4F6; color: #6B7280;"
 
 
+def _format_change(latest, base, unit: str, digits: int = 2) -> str:
+    """展示最新值较上期/参考值的变化。"""
+    if pd.isna(latest) or pd.isna(base):
+        return "—"
+
+    latest = float(latest)
+    base = float(base)
+    diff = latest - base
+
+    if abs(diff) < 1e-12:
+        return "持平"
+
+    arrow = "↑" if diff > 0 else "↓"
+    unit = "" if pd.isna(unit) else str(unit).strip()
+
+    if unit == "%":
+        diff_text = f"{abs(diff):.{digits}f}pp"
+    elif unit.lower() in {"pp", "pctpt", "百分点"}:
+        diff_text = f"{abs(diff):.{digits}f}pp"
+    elif unit:
+        diff_text = f"{abs(diff):.{digits}f}{unit}"
+    else:
+        diff_text = f"{abs(diff):.{digits}f}"
+
+    if abs(base) > 1e-12:
+        rel_change = diff / abs(base)
+        return f"{arrow} {diff_text}（{rel_change:+.1%}）"
+
+    return f"{arrow} {diff_text}"
+
+
+def _style_hierarchy_table(row, dimension_rows: set[int]):
+    if row.name in dimension_rows:
+        return [
+            "background-color: #111827; color: #ffffff; font-weight: 700;"
+            for _ in row
+        ]
+    return ["" for _ in row]
+
+
 def render_signal_table(detail: pd.DataFrame, dimension: str | None = None) -> None:
+    """核心指标主表：一级维度黑底行 + 二级指标明细行。主表不展示权重。"""
     data = detail if dimension is None else detail[detail["dimension"] == dimension]
     if data.empty:
         st.info("该维度暂无指标。")
         return
-    table = data[["dimension_label", "indicator_name", "latest_value_display", "signal_text", "signal_flag_display", "signal_state", "latest_date", "reference_value_display", "data_status"]].rename(
-        columns={"dimension_label": "维度(权重)", "indicator_name": "指标名称", "latest_value_display": "最新数值", "signal_text": "择时信号（防御）",
-                 "signal_flag_display": "是否满足择时信号", "signal_state": "信号状态", "latest_date": "最新日期", "reference_value_display": "参考值", "data_status": "数据状态"})
-    st.dataframe(table.style.map(_color_signal, subset=["是否满足择时信号"]), use_container_width=True, hide_index=True)
+
+    data = data.copy()
+    if "display_order" in data.columns:
+        data = data.sort_values(["display_order", "dimension", "indicator_name"])
+
+    rows = []
+    for dim, sub in data.groupby("dimension", sort=False):
+        rows.append({
+            "指标结构": str(dim),
+            "最新数值": "",
+            "较上期": "",
+            "较参考值/均值": "",
+            "择时信号": "",
+            "是否触发": "",
+            "信号状态": "",
+            "最新日期": "",
+            "数据状态": "",
+            "_is_dimension": True,
+        })
+
+        for _, r in sub.iterrows():
+            latest_date = pd.to_datetime(r.get("latest_date"), errors="coerce")
+            latest_date_text = latest_date.strftime("%Y-%m-%d") if pd.notna(latest_date) else "—"
+            digits = int(r.get("digits", 2)) if pd.notna(r.get("digits", 2)) else 2
+
+            rows.append({
+                "指标结构": f"　{r.get('indicator_name', '')}",
+                "最新数值": r.get("latest_value_display", "—"),
+                "较上期": _format_change(r.get("latest_value"), r.get("previous_value"), r.get("unit"), digits),
+                "较参考值/均值": _format_change(r.get("latest_value"), r.get("reference_value"), r.get("unit"), digits),
+                "择时信号": r.get("signal_text", ""),
+                "是否触发": r.get("signal_flag_display", "—"),
+                "信号状态": r.get("signal_state", ""),
+                "最新日期": latest_date_text,
+                "数据状态": r.get("data_status", ""),
+                "_is_dimension": False,
+            })
+
+    table = pd.DataFrame(rows)
+    dimension_rows = set(table.index[table["_is_dimension"]])
+    display = table.drop(columns=["_is_dimension"])
+
+    styled = (
+        display.style
+        .apply(lambda row: _style_hierarchy_table(row, dimension_rows), axis=1)
+        .map(_color_signal, subset=["是否触发"])
+    )
+
+    st.dataframe(styled, use_container_width=True, hide_index=True)
 
 
 def render_indicator_trend(series_df: pd.DataFrame, detail: pd.DataFrame) -> None:
