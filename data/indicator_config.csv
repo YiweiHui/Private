@@ -1,13 +1,13 @@
 ﻿display_order,dimension,dimension_weight,indicator_id,indicator_name,unit,rule_type,direction,ma_window,threshold,ma_include_latest,signal_text,digits,enabled,remark
-1,经济景气,0.25,PMI_MFG,制造业PMI,,moving_avg,below,6,,False,低于移动平均,2,True,真实接入时可映射至 Wind/统计局PMI代码
-2,经济景气,0.25,FAI_MFG_YOY,固定资产投资完成额:制造业:累计同比,%,moving_avg,below,6,,False,低于移动平均,2,True,
-3,经济景气,0.25,HOUSE_SALES_AREA_YOY,商品房销售面积:当月同比,%,mom,down,,,False,环比下降,2,True,
-4,通胀水平,0.25,CPI_YOY,CPI:当月同比,%,moving_avg,below,6,,False,低于移动平均,2,True,
-5,通胀水平,0.25,PPI_YOY,PPI:当月同比,%,mom,down,,,False,环比下降,2,True,
-6,通胀水平,0.25,PPI_CPI_SPREAD,PPI和CPI剪刀差,pp,moving_avg,above,6,,False,高于移动平均,2,True,可以由PPI_YOY-CPI_YOY派生，也可直接提供
-7,货币信用,0.25,M1_YOY,M1:当月同比,%,moving_avg,below,6,,False,低于移动平均,2,True,
-8,货币信用,0.25,M2_M1_SPREAD,M2和M1剪刀差,pp,moving_avg,above,6,,False,高于移动平均,2,True,可以由M2_YOY-M1_YOY派生，也可直接提供
-9,货币信用,0.25,TSF_YOY,社融:当月同比,%,mom,down,,,False,环比下降,2,True,
-10,利率,0.25,CN_10Y_YIELD,中债到期收益率:10年,%,mom,down,,,False,环比下降,2,True,
-11,利率,0.25,US_1Y_YIELD,美债到期收益率:1年,%,mom,up,,,False,环比上升,2,True,
-12,利率,0.25,CN_US_SPREAD,中美利差,pp,moving_avg,above,6,,False,高于移动平均,2,True,可以由中国收益率-美国收益率派生，也可直接提供
+1,经济景气,0.25,PMI_MFG,制造业PMI,,moving_avg,below,6,,False,低于移动平均,2,True,PMI低于自身趋势均值，提示制造业景气边际走弱。
+2,经济景气,0.25,FAI_MFG_YOY,固定资产投资完成额:制造业:累计同比,%,moving_avg,below,6,,False,低于移动平均,2,True,制造业投资同比低于趋势均值，提示实体投资动能走弱。
+3,经济景气,0.25,HOUSE_SALES_AREA_YOY,商品房销售面积:当月同比,%,mom,down,,,False,环比下降,2,True,地产销售同比较上期下降，提示需求侧压力。
+4,通胀水平,0.25,CPI_YOY,CPI:当月同比,%,moving_avg,below,6,,False,低于移动平均,2,True,CPI低于趋势均值，提示需求不足或价格动能偏弱。
+5,通胀水平,0.25,PPI_YOY,PPI:当月同比,%,mom,down,,,False,环比下降,2,True,PPI同比下降，提示工业品价格和企业利润压力。
+6,通胀水平,0.25,PPI_CPI_SPREAD,PPI和CPI剪刀差,pp,moving_avg,above,6,,False,高于移动平均,2,True,PPI-CPI剪刀差扩大，可能压缩中下游利润或反映价格结构压力。
+7,货币信用,0.25,M1_YOY,M1:当月同比,%,moving_avg,below,6,,False,低于移动平均,2,True,M1低于趋势均值，提示企业活化资金和经营活跃度不足。
+8,货币信用,0.25,M2_M1_SPREAD,M2和M1剪刀差,pp,moving_avg,above,6,,False,高于移动平均,2,True,M2-M1剪刀差高于趋势均值，提示资金空转或实体活跃度不足。
+9,货币信用,0.25,TSF_YOY,社融:当月同比,%,mom,down,,,False,环比下降,2,True,社融同比下降，提示信用扩张边际放缓。
+10,利率,0.25,CN_10Y_YIELD,中债到期收益率:10年,%,mom,down,,,False,环比下降,2,True,中债10年收益率下降，通常反映增长预期或风险偏好回落。
+11,利率,0.25,US_1Y_YIELD,美债到期收益率:1年,%,mom,up,,,False,环比上升,2,True,美债短端收益率上升，提示外部利率压力上升。
+12,利率,0.25,CN_US_SPREAD,中美利差,pp,moving_avg,above,6,,False,高于移动平均,2,True,中美利差指标高于自身均值，提示跨境资金或汇率压力变化。

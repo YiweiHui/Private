@@ -1,20 +1,10 @@
 # 数据说明
 
-当前 `macro_series_template.csv` 是演示/占位数据，只用于验证看板展示、信号计算和部署流程。
+本目录数据均为虚拟合成数据：
 
-正式使用时，将真实宏观数据整理为三列：
+- `macro_series_template.csv`：2015-01 至 2026-06 的 12 个宏观指标月度序列；
+- `asset_returns_template.csv`：虚拟资产月度收益率；
+- `indicator_config.xlsx/csv`：指标规则配置；
+- `macro_series_blank_template.csv`：真实数据接入模板。
 
-```text
-date, indicator_id, value
-```
-
-示例：
-
-```text
-2026-06-30,PMI_MFG,50.30
-2026-06-30,CPI_YOY,1.20
-```
-
-注意：百分比类指标请填写“百分点数”。例如 1.20% 填 `1.20`，不要填 `0.012`。
-
-不要把客户信息、产品持仓、内部月报、赎回测算、真实 Wind 导出明细上传到公网仓库。
+真实接入时只需替换 CSV 文件，字段保持一致。
